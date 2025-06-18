@@ -6,7 +6,8 @@
       <class name="FinalProject.FinalProject.AppTest">
         <methods>
           <include name="mySetup"/>
-          <include name="ContactFormSubmission"/>
+          <include name="ViewingAndModifyingShoppingCart"/>
+          <include name="tearDown"/>
         </methods>
       </class> <!-- FinalProject.FinalProject.AppTest -->
     </classes>

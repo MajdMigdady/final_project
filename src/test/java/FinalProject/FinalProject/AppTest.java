@@ -1,5 +1,10 @@
 package FinalProject.FinalProject;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,14 +12,17 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -24,31 +32,37 @@ public class AppTest {
 	String URL = "https://automationteststore.com/";
 	WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 	Random rand = new Random();
-
+	JavascriptExecutor js = (JavascriptExecutor) driver;
+	Connection con;
+	Statement stmt;
+	ResultSet rs;
+	String userFirstName;
 	String username;
 	String password = "Test@123";
 
 	@BeforeTest
-	public void mySetup() {
+	public void mySetup() throws SQLException {
 
 		driver.get(URL);
 		driver.manage().window().maximize();
 		driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(15));
 
+		con = DriverManager.getConnection("jdbc:mysql://localhost:3306/finalproject", "root", "1234");
+
 	}
 
-	@Test(priority = 1, enabled = false)
+	@Test(priority = 1, enabled = true)
 	public void HomepageAccessibility() {
 		WebElement featured = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector(".maintext")));
 		boolean ActualHomeLoad = featured.isDisplayed();
-		// boolean ExpectedHomeLoad = "true";
+		boolean ExpectedHomeLoad = true;
 
-		Assert.assertEquals(ActualHomeLoad, true);
+		Assert.assertEquals(ActualHomeLoad, ExpectedHomeLoad);
 
 	}
 
 	@Test(priority = 2, enabled = true)
-	public void UserRegistrationProcess() throws InterruptedException {
+	public void UserRegistrationProcess() throws InterruptedException, SQLException {
 
 		WebElement LoginButton = driver.findElement(By.linkText("Login or register"));
 		LoginButton.click();
@@ -58,16 +72,23 @@ public class AppTest {
 
 		// Fill registration form
 
-		String firstName = "Test";
-		WebElement firstNamefield = driver.findElement(By.id("AccountFrm_firstname"));
-		firstNamefield.sendKeys(firstName);
+		String[] firstNames = { "mohammad", "ola", "khalid", "yasmine", "ayat", "alaa", "waleed", "Rama" };
+		String[] lastNames = { "yaser", "mustafa", "Mohammad", "abdullah", "sami", "omar" };
 
-		String lastName = "User";
+		int RandomIndexForFirstName = rand.nextInt(firstNames.length);
+		int RandomIndexForLastName = rand.nextInt(lastNames.length);
+
+		userFirstName = firstNames[RandomIndexForFirstName];
+		String userLastName = lastNames[RandomIndexForLastName];
+
+		WebElement firstNamefield = driver.findElement(By.id("AccountFrm_firstname"));
+		firstNamefield.sendKeys(userFirstName);
+
 		WebElement lastNamefield = driver.findElement(By.id("AccountFrm_lastname"));
-		lastNamefield.sendKeys(lastName);
+		lastNamefield.sendKeys(userLastName);
 
 		int randomNumberForEmail = rand.nextInt(500);
-		String RANDOM_EMAIL = firstName + lastName + randomNumberForEmail + "@gmail.com";
+		String RANDOM_EMAIL = userFirstName + userLastName + randomNumberForEmail + "@example.com";
 		WebElement emailfeild = driver.findElement(By.id("AccountFrm_email"));
 		emailfeild.sendKeys(RANDOM_EMAIL);
 
@@ -77,7 +98,10 @@ public class AppTest {
 		WebElement faxfeild = driver.findElement(By.id("AccountFrm_fax"));
 		faxfeild.sendKeys("1234567890");
 
-		WebElement companyfeild = driver.findElement(By.id("AccountFrm_fax"));
+		Thread.sleep(500);
+		js.executeScript("window.scrollBy(0, 660)"); // Scrolls down 500 pixels
+
+		WebElement companyfeild = driver.findElement(By.id("AccountFrm_company"));
 		companyfeild.sendKeys("Test Company");
 
 		WebElement addressFeild = driver.findElement(By.id("AccountFrm_address_1"));
@@ -93,7 +117,7 @@ public class AppTest {
 		Select countrySelect = new Select(countryFeild);
 		countrySelect.selectByVisibleText("Jordan");
 
-		Thread.sleep(1000); // Wait for states to load
+		Thread.sleep(1500); // Wait for states to load
 
 		WebElement zoneFeild = driver.findElement(By.id("AccountFrm_zone_id"));
 		Select zoneSelect = new Select(zoneFeild);
@@ -102,7 +126,7 @@ public class AppTest {
 		WebElement postcodeFeild = driver.findElement(By.id("AccountFrm_postcode"));
 		postcodeFeild.sendKeys("11181");
 
-		username = lastName + "_" + UUID.randomUUID().toString().substring(0, 4);
+		username = userFirstName + "_" + UUID.randomUUID().toString().substring(0, 4);
 		WebElement usernameFeild = driver.findElement(By.id("AccountFrm_loginname"));
 		usernameFeild.sendKeys(username);
 
@@ -118,17 +142,32 @@ public class AppTest {
 		WebElement submitButton = driver.findElement(By.cssSelector(".btn.btn-orange.pull-right.lock-on-click"));
 		submitButton.click();
 
+		String query = "INSERT INTO users (first_name, last_name, email, telephone, fax, company, address1, address2, city, region_state, zip_code, country, login_name, password) VALUES ('"
+				+ userFirstName + "', '" + userLastName + "', '" + RANDOM_EMAIL
+				+ "', '1234567890', '1234567890', 'Test Company', '123 Test St', '123 Test 2 St', 'Test City', 'Amman', '11181', 'Jordan', '"
+				+ username + "', '" + password + "');";
+
+		stmt = con.createStatement();
+		int rowsInserted = stmt.executeUpdate(query);
+		System.out.println("Rows inserted: " + rowsInserted);
+		
+
 		String ExpectedRegister = "YOUR ACCOUNT HAS BEEN CREATED!";
 		String successText = driver.findElement(By.cssSelector(".maintext")).getText();
 		Assert.assertTrue(successText.contains(ExpectedRegister), " User Registration Failed");
 
 	}
-
+ 
 	@Test(priority = 3, enabled = true)
-	public void UserLoginFunctionality() {
+	public void UserLoginFunctionality() throws InterruptedException {
 
-		WebElement logoutButton = driver.findElement(By.linkText("Logoff"));
-		logoutButton.click();
+		
+		Actions action = new Actions(driver);
+		WebElement MouseHover = driver.findElement(By.id("customer_menu_top"));
+		action.moveToElement(MouseHover).build().perform();
+		
+		WebElement dropdownlogoff = driver.findElement(By.linkText("Not "+userFirstName+"? Logoff"));
+		dropdownlogoff.click();
 
 		WebElement LoginButton = driver.findElement(By.linkText("Login or register"));
 		LoginButton.click();
@@ -139,6 +178,7 @@ public class AppTest {
 		WebElement passwordFeild = driver.findElement(By.id("loginFrm_password"));
 		passwordFeild.sendKeys(password);
 
+		Thread.sleep(500);
 		WebElement ContinuoButton = driver.findElement(By.xpath("//button[@title='Login']"));
 		ContinuoButton.click();
 
@@ -149,11 +189,13 @@ public class AppTest {
 
 	}
 
-	@Test(priority = 4, enabled = false)
+	@Test(priority = 4, enabled = true)
 	public void ProductSearchFunctionality() {
 
 		WebElement searchbar = driver.findElement(By.id("filter_keyword"));
 		searchbar.sendKeys("Shampoo" + Keys.ENTER);
+
+		js.executeScript("window.scrollBy(0, 300)"); // Scrolls down 320 pixels
 
 		List<WebElement> searchResult = driver.findElements(By.className("fixed_wrapper"));
 
@@ -170,12 +212,15 @@ public class AppTest {
 		Assert.assertEquals(searchResult.size(), ExpextedProductCount);
 	}
 
-	@Test(priority = 5, enabled = false)
-	public void FilteringSearchResults() {
+	@Test(priority = 5, enabled = true)
+	public void FilteringSearchResults() throws InterruptedException {
 
 		WebElement filterResult = driver.findElement(By.id("sort"));
 		Select sortResult = new Select(filterResult);
 		sortResult.selectByVisibleText("Price Low > High");
+
+		js.executeScript("window.scrollBy(0, 300)");
+		Thread.sleep(500);
 
 		List<WebElement> sortLowToHigh = driver.findElements(By.cssSelector(".pricetag.jumbotron"));
 		List<Double> prices = new ArrayList<>();
@@ -185,8 +230,6 @@ public class AppTest {
 			String priceText = sortLowToHigh.get(i).getText().replace("$", "").trim();
 			double price = Double.parseDouble(priceText);
 			prices.add(price);
-
-			System.out.println("Prices found: " + prices);
 
 		}
 
@@ -201,40 +244,67 @@ public class AppTest {
 		Assert.assertTrue(isSorted, "Prices are not sorted from Low to High");
 	}
 
-	@Test(priority = 6, enabled = false)
-	public void ViewingProductDetails() {
+	@Test(priority = 6, enabled = true)
+	public void ViewingProductDetails() throws InterruptedException {
 
-		WebElement ViewButton = driver.findElement(By.cssSelector(".col-md-3.col-sm-6.col-xs-12"));
-		ViewButton.click();
+		driver.get(URL);
+
+		String[] listOfItems = {
+				"img[src='//automationteststore.com/image/thumbnails/18/6a/demo_product18_jpg-100013-250x250.jpg']\r\n",
+				"body > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > section:nth-child(5) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(2) > a:nth-child(2) > img:nth-child(1)",
+				"img[src='//automationteststore.com/image/thumbnails/18/6f/demo_product16_1_jpg-100091-250x250.jpg']",
+				"img[src='//automationteststore.com/image/thumbnails/18/6d/demo_product17_jpg-100052-250x250.jpg']" };
+
+		int randomItems = rand.nextInt(listOfItems.length);
+		String randomLatestProducts = listOfItems[randomItems];
+
+		js.executeScript("window.scrollBy(0,1300)");
+		Thread.sleep(1000);
+
+		WebElement product = driver.findElement(By.cssSelector(randomLatestProducts));
+		product.click();
 
 		WebElement descriptionsection = wait
 				.until(ExpectedConditions.visibilityOfElementLocated(By.linkText("Description")));
 
-		Assert.assertTrue(descriptionsection.isDisplayed(), " can not view product details ");
+		// Step 2: Verify product details are displayed
+		WebElement productTitle = driver.findElement(By.cssSelector("div.col-md-12 h1"));
+		WebElement productImage = driver.findElement(By.xpath("//a[@class='local_image']//img"));
+		WebElement price = driver.findElement(By.cssSelector(".productfilneprice"));
+		WebElement availability = driver.findElement(By.className("cart"));
+
+		// Assertions
+		Assert.assertTrue(productTitle.isDisplayed(), "Product title is not displayed.");
+		Assert.assertTrue(productImage.isDisplayed(), "Product image is not displayed.");
+		Assert.assertTrue(price.isDisplayed(), "Product price is not displayed.");
+		Assert.assertTrue(availability.isDisplayed(), "Availability info is not displayed.");
+		Assert.assertTrue(descriptionsection.isDisplayed(), "description is not displayed. ");
 
 	}
 
-	@Test(priority = 7, enabled = false)
-	public void AddingProductsToCart() {
+	@Test(priority = 7, enabled = true)
+	public void AddingProductsToCart() throws InterruptedException {
 
-		WebElement AddToCartButton = driver.findElement(By.partialLinkText("Add to"));
+		Thread.sleep(1000);
+		WebElement AddToCartButton = driver.findElement(By.cssSelector(".cart"));
 		AddToCartButton.click();
 
 		WebElement TheCartsection = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("cart")));
 
 		Assert.assertTrue(TheCartsection.isDisplayed(), " The product did not add to the cart ");
 
-//		 List<WebElement> cartItems = driver.findElements(By.cssSelector(".cart-item"));  // غيّر السيلكتور حسب موقعك
-//		    Assert.assertTrue(cartItems.size() > 0, "عربة التسوق فارغة");
-
 	}
 
-	@Test(priority = 8, enabled = false)
+	@Test(priority = 8, enabled = true)
 	public void ViewingAndModifyingShoppingCart() throws InterruptedException {
 
 		String ExpectedQuantity = String.valueOf(3);
 
-		WebElement quantityInput = driver.findElement(By.cssSelector(".input-group.input-group-sm input"));
+		Thread.sleep(500);
+		WebElement quantityDiv = wait
+				.until(ExpectedConditions.elementToBeClickable(By.cssSelector(".input-group.input-group-sm")));
+
+		WebElement quantityInput = quantityDiv.findElement(By.cssSelector("input"));
 
 		quantityInput.clear();
 		quantityInput.sendKeys(ExpectedQuantity);
@@ -242,21 +312,31 @@ public class AppTest {
 		WebElement updateButton = driver.findElement(By.id("cart_update"));
 		updateButton.click();
 
-		WebElement updatedQuantityInput = wait.until(
-				ExpectedConditions.presenceOfElementLocated(By.cssSelector(".input-group.input-group-sm input")));
-		String updatedQty = updatedQuantityInput.getDomAttribute("value");
+		WebElement UnitPrice = driver.findElement(By.cssSelector(
+				"body > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > form:nth-child(2) > div:nth-child(1) > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(2) > td:nth-child(4)"));
 
-		Assert.assertEquals(updatedQty, ExpectedQuantity, "الكمية لم تتحدث كما هو متوقع");
+		WebElement ActualtotalPrice = driver.findElement(By.cssSelector(
+				"body > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > form:nth-child(2) > div:nth-child(1) > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(2) > td:nth-child(6)"));
 
-//	    WebElement totalPriceElement = driver.findElement(By.cssSelector(".cart-total"));
-//	    String totalPriceText = totalPriceElement.getText();
-//	    System.out.println("السعر الإجمالي بعد التحديث: " + totalPriceText);
-//	    Assert.assertTrue(totalPriceText.contains("$"), "السعر الإجمالي غير ظاهر أو غير صحيح");
+		String priceForunit = UnitPrice.getText().replace("$", "").trim();
+		;
+		double intPrice = Double.parseDouble(priceForunit);
+
+		String priceFortotal = ActualtotalPrice.getText().replace("$", "").trim();
+		;
+		double ActualTotalPrice = Double.parseDouble(priceFortotal);
+
+		double ExpectedtotalPrice = intPrice * 3.0;
+
+		Assert.assertEquals(ActualTotalPrice, ExpectedtotalPrice);
 
 	}
 
-	@Test(priority = 9, enabled = false)
+	@Test(priority = 9, enabled = true)
 	public void ProceedingToCheckout() throws InterruptedException {
+
+		js.executeScript("window.scrollBy(0,400)");
+		Thread.sleep(1000);
 
 		WebElement mySelectForCountry = driver.findElement(By.id("estimate_country"));
 
@@ -286,48 +366,53 @@ public class AppTest {
 		WebElement messageElement = wait.until(ExpectedConditions
 				.visibilityOfElementLocated(By.xpath("//span[contains(text(),'Your Order Has Been Processed!')]")));
 
-		
 		String Expectedcheckout = "YOUR ORDER HAS BEEN PROCESSED!";
-		String Actualcheckout=messageElement.getText();
-		
+		String Actualcheckout = messageElement.getText();
+
 		Assert.assertEquals(Actualcheckout, Expectedcheckout);
-				
+
 	}
 
-	
-	
-	@Test(priority = 10, enabled = false)
-	public void ContactFormSubmission() {
-		
+	@Test(priority = 10, enabled = true)
+	public void ContactFormSubmission() throws InterruptedException {
+
+		js.executeScript("window.scrollBy(0,3300)");
+		Thread.sleep(1000);
+
 		WebElement contectUsButton = driver.findElement(By.linkText("Contact Us"));
 		contectUsButton.click();
-		
+
+		Thread.sleep(1000);
+		js.executeScript("window.scrollBy(0,300)");
+		Thread.sleep(1000);
 		WebElement firstNameforContact = driver.findElement(By.id("ContactUsFrm_first_name"));
 		firstNameforContact.sendKeys("Tester");
-		
+
 		WebElement EmailforContact = driver.findElement(By.id("ContactUsFrm_email"));
 		EmailforContact.sendKeys("TesterUser2025@example.com");
-		
+
 		WebElement Enquiry = driver.findElement(By.id("ContactUsFrm_enquiry"));
 		Enquiry.sendKeys("This is a test enquiry message.");
-		
-		
-       WebElement Submitcontactform = driver.findElement(By.cssSelector("button[title='Submit']"));
-       Submitcontactform.click();
-       
-       
-       //Your enquiry has been successfully sent to the store owner!
 
-       WebElement confirmation = driver.findElement(By.cssSelector(".mb40"));
-       String ActualMessage = confirmation.getText().trim();
-       String expectedMessage = "Your enquiry has been successfully sent to the store owner.";
-       Assert.assertEquals(ActualMessage, expectedMessage, "Confirmation message mismatch!");
+		WebElement Submitcontactform = driver.findElement(By.cssSelector("button[title='Submit']"));
+		Submitcontactform.click();
 
-		
-		
-		
+		// Your enquiry has been successfully sent to the store owner!
+
+		WebElement confirmation = driver.findElement(By.cssSelector(".mb40"));
+		String ActualMessage = confirmation.getText().trim();
+
+		String expectedMessage = "Your enquiry has been successfully sent to the store owner!";
+		Assert.assertTrue(ActualMessage.contains(expectedMessage),
+				"Confirmation message does not contain expected text.");
 	}
+
 	
-	
-	
+	@AfterTest
+	public void tearDown() {
+	    if (driver != null) {
+	        driver.quit(); 
+	    }
+	}
+
 }
